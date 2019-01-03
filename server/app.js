@@ -36,7 +36,7 @@ mongoose.set('debug', true);
 
 // Add models
 // Add routes
-app.use(require('./routes'));
+app.use(require('./routes/api'));
 
 app.use((req, res, next) => {
     const err = new Error('Not Found');
