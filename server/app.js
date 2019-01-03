@@ -1,83 +1,66 @@
+// Dependencies
 const path = require('path'),
-    express = require('express'),
-    bodyParser = require('body-parser'),
-    session = require('express-session'),
-    cors = require('cors'),
-    errorHandler = require('errorhandler'),
-    mongoose = require('mongoose');
+  express = require('express'),
+  bodyParser = require('body-parser'),
+  session = require('express-session'),
+  cors = require('cors'),
+  errorHandler = require('errorhandler'),
+  mongoose = require('mongoose'),
+  logger = require('morgan');
 
-mongoose.promise = global.Promise;
+// Initializing the App
+const app = express();
 
-const isProduction = process.env.NODE_ENV === 'production',
-    app = express();
+// Setting up the Database
+const config = require('./config/database');
+mongoose.Promise = Promise;
+mongoose
+  .connect(config.database)
+  .then( result => {
+    console.log(`Connected to database '${result.connections[0].name}' on ${result.connections[0].host}:${result.connections[0].port}`);
+  })
+  .catch(err => console.log('There was an error with your connection:', err));
 
+// Setting up Cors
 app.use(cors());
+
+// Setting up Morgan Middleware
 app.use(require('morgan')('dev'));
-app.use(bodyParser.urlencoded({
-    extended: false
-}));
+
+// Setting up Body-Parser Middleware
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
+
+// Setting up the Static Directory
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({
-    secret: 'LightBlog',
-    cookie: {
-        maxAge: 60000
-    },
-    resave: false,
-    saveUninitialized: false
-}));
+app.use(session({ secret: 'reaCTBlog', cookie: { maxAge: 60000 }, resave: false, saveUninitialized: false }));
 
-if (!isProduction) {
-    app.use(errorHandler());
-}
 
-mongoose.connect('mongodb://localhost/lightblog');
-mongoose.set('debug', true);
-
-// Add models
-// Add routes
-app.use(require('./routes/api'));
-
-app.use((req, res, next) => {
-    const err = new Error('Not Found');
-    err.status = 404;
-    next(err);
-});
-mongoose.connect('mongodb://localhost/lightblog');
-mongoose.set('debug', true);
-
-// Add models
+// Setting up Models
 require('./models/Articles');
-// Add routes
+
+// Setting up Routes
+app.use(require('./routes'));
 
 app.use((req, res, next) => {
-    const err = new Error('Not Found');
-    err.status = 404;
-    next(err);
+  const err = new Error('Not Found');
+  err.status = 404;
+  next(err);
 });
-
-if (!isProduction) {
-    app.use((err, req, res) => {
-        res.status(err.status || 500);
-
-        res.json({
-            errors: {
-                message: err.message,
-                error: err,
-            },
-        });
-    });
-}
 
 app.use((err, req, res) => {
-    res.status(err.status || 500);
+  res.status(err.status || 500);
 
-    res.json({
-        errors: {
-            message: err.message,
-            error: {},
-        },
-    });
+  res.json({
+    errors: {
+      message: err.message,
+      error: {},
+    },
+  });
 });
 
-const server = app.listen(8000, () => console.log('Server started on http://localhost:8000'));
+//starting server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, function () {
+  console.log(`Listening on http://localhost:${PORT}`);
+});
